@@ -1,4 +1,5 @@
-// client\src\company\layout\CompanyLayout.jsx
+// client/src/company/layout/CompanyLayout.jsx
+
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -6,24 +7,36 @@ import CompanyRoutes from "../routes/CompanyRoutes";
 
 const CompanyLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    // Reduced gap-5 to gap-2 and p-5 to p-3 for a tighter look on desktop
-    <div className="flex h-screen bg-[#DDE2E7] p-0 md:p-3 gap-0 md:gap-3 overflow-hidden">
-      
-      <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+    <div className="flex h-screen bg-[#DDE2E7] md:p-3 overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        isCollapsed={isCollapsed}
+      />
 
-      <div className="flex-1 flex flex-col bg-[#F3F5F7] md:rounded-[2rem] shadow-2xl shadow-black/5 overflow-hidden relative border-t md:border border-white/50">
-        <Topbar onMenuClick={() => setIsMobileMenuOpen(true)} />
+      {/* Main Content */}
+      <div className="flex-1 min-w-0 flex flex-col transition-all duration-300">
+        <div className="bg-[#F3F5F7] md:rounded-[2.5rem] shadow-2xl shadow-black/5 overflow-hidden border border-white/50 flex flex-col h-full">
+          <Topbar
+            onMenuClick={() => setIsMobileMenuOpen(true)}
+            toggleCollapse={() => setIsCollapsed((prev) => !prev)}
+            isCollapsed={isCollapsed}
+          />
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-          <CompanyRoutes />
-        </main>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+            <CompanyRoutes />
+          </main>
+        </div>
       </div>
 
+      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/10 backdrop-blur-[2px] z-[40] md:hidden"
+        <div
+          className="fixed inset-0 bg-black/20 z-40 md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

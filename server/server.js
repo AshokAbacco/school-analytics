@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";   // ✅ ADD THIS
 import universityRoutes from "./routes/university.routes.js";
 import abaccoRoutes from "./routes/abacco.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
 
 const app = express();
 
@@ -20,6 +22,11 @@ app.get("/", (req, res) => {
 });
 app.use("/api/universities", universityRoutes);
 app.use("/api/abacco", abaccoRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use(
+  "/api/dashboard",
+  dashboardRoutes
+);
 
 
 app.listen(5001, () => {
