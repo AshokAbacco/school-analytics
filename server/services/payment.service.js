@@ -7,6 +7,15 @@ export const getPaymentsAnalytics = async () => {
     },
 
     include: {
+      // ✅ DIRECT UNIVERSITY RELATION
+      university: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+
+      // ✅ SCHOOL RELATION
       school: {
         select: {
           id: true,
@@ -22,6 +31,7 @@ export const getPaymentsAnalytics = async () => {
         },
       },
 
+      // ✅ SUBSCRIPTIONS
       Subscription: {
         include: {
           plan: true,
@@ -31,9 +41,11 @@ export const getPaymentsAnalytics = async () => {
   });
 
   // =========================
-  // ALL PAYMENTS
+  // SUCCESSFUL PAYMENTS
   // =========================
-  const successfulPayments = payments;
+  const successfulPayments = payments.filter(
+    (payment) => payment.status === "SUCCESS"
+  );
 
   // =========================
   // TOTAL REVENUE
@@ -66,7 +78,9 @@ export const getPaymentsAnalytics = async () => {
   const universityRevenueMap = {};
 
   successfulPayments.forEach((payment) => {
+    // ✅ FIXED UNIVERSITY NAME FETCH
     const universityName =
+      payment.university?.name ||
       payment.school?.university?.name ||
       "Unknown University";
 
@@ -136,7 +150,9 @@ export const getPaymentsAnalytics = async () => {
   const paymentHistory = payments.map((payment) => ({
     id: payment.id,
 
+    // ✅ FIXED UNIVERSITY NAME
     universityName:
+      payment.university?.name ||
       payment.school?.university?.name ||
       "Unknown University",
 
@@ -171,6 +187,7 @@ export const getPaymentsAnalytics = async () => {
       totalRevenue,
       monthlyRevenue,
       totalPayments: payments.length,
+
       successfulPayments:
         successfulPayments.length,
 
