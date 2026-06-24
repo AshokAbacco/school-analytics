@@ -7,22 +7,22 @@ export const getPaymentsAnalytics = async () => {
     },
 
     include: {
-      school: {
+      university: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+
+      School: {
         select: {
           id: true,
           name: true,
           type: true,
-
-          university: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       },
 
-      Subscription: {
+      subscriptions: {
         include: {
           plan: true,
         },
@@ -39,7 +39,7 @@ export const getPaymentsAnalytics = async () => {
   // TOTAL REVENUE
   // =========================
   const totalRevenue = successfulPayments.reduce(
-    (acc, item) => acc + Number(item.amount),
+    (acc, item) => acc + Number(item.amount || 0),
     0
   );
 
@@ -58,7 +58,7 @@ export const getPaymentsAnalytics = async () => {
         date.getFullYear() === currentYear
       );
     })
-    .reduce((acc, item) => acc + Number(item.amount), 0);
+    .reduce((acc, item) => acc + Number(item.amount || 0), 0);
 
   // =========================
   // UNIVERSITY REVENUE
@@ -67,7 +67,8 @@ export const getPaymentsAnalytics = async () => {
 
   successfulPayments.forEach((payment) => {
     const universityName =
-      payment.school?.university?.name ||
+      payment.university?.name ||
+      payment.university?.name ||
       "Unknown University";
 
     if (!universityRevenueMap[universityName]) {
@@ -80,14 +81,14 @@ export const getPaymentsAnalytics = async () => {
     }
 
     universityRevenueMap[universityName].totalRevenue += Number(
-      payment.amount
+      payment.amount || 0
     );
 
     universityRevenueMap[universityName].totalPayments += 1;
 
-    if (payment.school?.name) {
+    if (payment.School?.name) {
       universityRevenueMap[universityName].schools.add(
-        payment.school.name
+        payment.School.name
       );
     }
   });
@@ -108,7 +109,8 @@ export const getPaymentsAnalytics = async () => {
 
   successfulPayments.forEach((payment) => {
     const planName =
-      payment.Subscription?.[0]?.plan?.name ||
+      payment.subscriptions?.[0]?.plan?.name ||
+      payment.plan?.name ||
       "Basic Plan";
 
     if (!packageAnalyticsMap[planName]) {
@@ -120,15 +122,13 @@ export const getPaymentsAnalytics = async () => {
     }
 
     packageAnalyticsMap[planName].totalRevenue += Number(
-      payment.amount
+      payment.amount || 0
     );
 
     packageAnalyticsMap[planName].totalSubscriptions += 1;
   });
 
-  const packageAnalytics = Object.values(
-    packageAnalyticsMap
-  );
+  const packageAnalytics = Object.values(packageAnalyticsMap);
 
   // =========================
   // PAYMENT HISTORY
@@ -137,16 +137,17 @@ export const getPaymentsAnalytics = async () => {
     id: payment.id,
 
     universityName:
-      payment.school?.university?.name ||
+      payment.university?.name ||
+      payment.university?.name ||
       "Unknown University",
 
     schoolName:
-      payment.school?.name ||
+      payment.School?.name ||
       payment.schoolName ||
       "N/A",
 
     schoolType:
-      payment.school?.type || "N/A",
+      payment.School?.type || "N/A",
 
     amount: payment.amount,
 
@@ -159,9 +160,9 @@ export const getPaymentsAnalytics = async () => {
     paymentDate: payment.createdAt,
 
     packages:
-      payment.Subscription?.length > 0
-        ? payment.Subscription.map(
-            (sub) => sub.plan?.name
+      payment.subscriptions?.length > 0
+        ? payment.subscriptions.map(
+            (sub) => sub.plan?.name || "Basic Plan"
           )
         : ["Basic Plan"],
   }));
@@ -171,6 +172,7 @@ export const getPaymentsAnalytics = async () => {
       totalRevenue,
       monthlyRevenue,
       totalPayments: payments.length,
+
       successfulPayments:
         successfulPayments.length,
 
