@@ -27,12 +27,17 @@ export const getDashboardAnalytics = async () => {
     },
 
     include: {
+      // ✅ DIRECT UNIVERSITY RELATION
+      university: true,
+
+      // ✅ SCHOOL + UNIVERSITY
       school: {
         include: {
           university: true,
         },
       },
 
+      // ✅ PLAN INFO
       Subscription: {
         include: {
           plan: true,
@@ -42,12 +47,16 @@ export const getDashboardAnalytics = async () => {
   });
 
   // =========================
-  // REVENUE
+  // SUCCESS PAYMENTS
   // =========================
 
   const successfulPayments = payments.filter(
     (payment) => payment.status === "SUCCESS"
   );
+
+  // =========================
+  // REVENUE
+  // =========================
 
   const totalRevenue =
     successfulPayments.reduce(
@@ -89,7 +98,9 @@ export const getDashboardAnalytics = async () => {
   const universityMap = {};
 
   successfulPayments.forEach((payment) => {
+    // ✅ FIXED UNIVERSITY FETCH
     const universityName =
+      payment.university?.name ||
       payment.school?.university?.name ||
       "Unknown University";
 
@@ -137,6 +148,25 @@ export const getDashboardAnalytics = async () => {
     const subscriptions =
       payment.Subscription || [];
 
+    // ✅ HANDLE NO SUBSCRIPTION
+    if (subscriptions.length === 0) {
+      if (!planMap["Basic Plan"]) {
+        planMap["Basic Plan"] = {
+          planName: "Basic Plan",
+          revenue: 0,
+          subscriptions: 0,
+        };
+      }
+
+      planMap["Basic Plan"].revenue +=
+        Number(payment.amount);
+
+      planMap["Basic Plan"]
+        .subscriptions += 1;
+
+      return;
+    }
+
     subscriptions.forEach((sub) => {
       const planName =
         sub.plan?.name || "Basic Plan";
@@ -174,9 +204,12 @@ export const getDashboardAnalytics = async () => {
 
         school:
           payment.school?.name ||
-          payment.schoolName,
+          payment.schoolName ||
+          "N/A",
 
+        // ✅ FIXED UNIVERSITY NAME
         university:
+          payment.university?.name ||
           payment.school?.university
             ?.name ||
           "Unknown University",
@@ -206,6 +239,19 @@ export const getDashboardAnalytics = async () => {
       totalSchools,
       totalUniversities,
       totalSubscriptions,
+
+      successfulPayments:
+        successfulPayments.length,
+
+      failedPayments:
+        payments.filter(
+          (p) => p.status === "FAILED"
+        ).length,
+
+      pendingPayments:
+        payments.filter(
+          (p) => p.status === "PENDING"
+        ).length,
     },
 
     universityAnalytics,

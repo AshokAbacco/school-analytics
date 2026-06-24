@@ -7,13 +7,15 @@ import {
   CreditCard,
   LogOut,
   Infinity,
+  ShieldBan,
   X,
 } from "lucide-react";
 
 const Sidebar = ({ isOpen, onClose, isCollapsed }) => {
   const menus = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
-    { name: "Users", path: "/users", icon: Users },
+    { name: "Universities", path: "/universities", icon: Users },
+{ name: "Access Control", path: "/access-control", icon: ShieldBan },
     { name: "Payments", path: "/payments", icon: CreditCard },
   ];
 

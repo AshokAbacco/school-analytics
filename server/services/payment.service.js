@@ -31,9 +31,11 @@ export const getPaymentsAnalytics = async () => {
   });
 
   // =========================
-  // ALL PAYMENTS
+  // SUCCESSFUL PAYMENTS
   // =========================
-  const successfulPayments = payments;
+  const successfulPayments = payments.filter(
+    (payment) => payment.status === "SUCCESS"
+  );
 
   // =========================
   // TOTAL REVENUE
@@ -66,6 +68,7 @@ export const getPaymentsAnalytics = async () => {
   const universityRevenueMap = {};
 
   successfulPayments.forEach((payment) => {
+    // ✅ FIXED UNIVERSITY NAME FETCH
     const universityName =
       payment.university?.name ||
       payment.university?.name ||
@@ -136,6 +139,7 @@ export const getPaymentsAnalytics = async () => {
   const paymentHistory = payments.map((payment) => ({
     id: payment.id,
 
+    // ✅ FIXED UNIVERSITY NAME
     universityName:
       payment.university?.name ||
       payment.university?.name ||

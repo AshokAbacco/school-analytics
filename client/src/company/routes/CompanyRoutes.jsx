@@ -1,12 +1,16 @@
 import { Routes, Route } from "react-router-dom";
+
 import DashboardPage from "../dashboard/DashboardPage";
 import UsersPage from "../users/UsersPage";
 import PaymentsPage from "../payments/PaymentsPage";
+import AccessControlPage from "../access-control/AccessControlPage";
+
 import ProtectedRoute from "./ProtectedRoute";
 
 const CompanyRoutes = () => {
   return (
     <Routes>
+      {/* Dashboard */}
       <Route
         path="/"
         element={
@@ -16,8 +20,9 @@ const CompanyRoutes = () => {
         }
       />
 
+      {/* Universities */}
       <Route
-        path="/users"
+        path="/universities"
         element={
           <ProtectedRoute>
             <UsersPage />
@@ -25,6 +30,17 @@ const CompanyRoutes = () => {
         }
       />
 
+      {/* Access Control */}
+      <Route
+        path="/access-control"
+        element={
+          <ProtectedRoute>
+            <AccessControlPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Payments */}
       <Route
         path="/payments"
         element={
