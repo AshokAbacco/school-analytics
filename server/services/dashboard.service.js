@@ -4,43 +4,75 @@ export const getDashboardAnalytics = async () => {
   // =========================
   // TOTAL COUNTS
   // =========================
-
   const totalSchools = await prisma.school.count();
-
-  const totalUniversities =
-    await prisma.university.count();
-
-  const totalSubscriptions =
-    await prisma.subscription.count({
-      where: {
-        status: "ACTIVE",
-      },
-    });
+  const totalUniversities = await prisma.university.count();
+  const totalSubscriptions = await prisma.subscription.count({
+    where: { status: "ACTIVE" },
+  });
 
   // =========================
-  // PAYMENTS
+  // PAYMENTS — use exact field names from School Analytics schema
+  // school → School (capital S), Subscription → subscriptions
   // =========================
-
   const payments = await prisma.payment.findMany({
-    orderBy: {
-      createdAt: "desc",
-    },
-
-    include: {
-      // ✅ DIRECT UNIVERSITY RELATION
-      university: true,
-
-      // ✅ SCHOOL + UNIVERSITY
-      school: {
-        include: {
-          university: true,
+    orderBy: { createdAt: "desc" },
+    select: {
+      id:                true,
+      createdAt:         true,
+      fullName:          true,
+      schoolName:        true,
+      email:             true,
+      phone:             true,
+      address:           true,
+      planId:            true,
+      planName:          true,
+      planPrice:         true,
+      maxSchools:        true,
+      maxStudents:       true,
+      maxTeachers:       true,
+      maxSchoolAdmins:   true,
+      planStartDate:     true,
+      planEndDate:       true,
+      userCount:         true,
+      studentCount:      true,
+      teacherCount:      true,
+      amount:            true,
+      razorpayOrderId:   true,
+      razorpayPaymentId: true,
+      status:            true,
+      superAdminId:      true,
+      universityId:      true,
+      schoolId:          true,
+      university: {
+        select: { id: true, name: true },
+      },
+      School: {                          // ← capital S
+        select: {
+          id:   true,
+          name: true,
+          type: true,
+          university: {
+            select: { id: true, name: true },
+          },
         },
       },
-
-      // ✅ PLAN INFO
-      Subscription: {
-        include: {
-          plan: true,
+      subscriptions: {                   // ← lowercase
+        select: {
+          id:     true,
+          status: true,
+          plan: {
+            select: {
+              id:              true,
+              name:            true,
+              price:           true,
+              maxSchools:      true,
+              maxStudents:     true,
+              maxTeachers:     true,
+              maxSchoolAdmins: true,
+              features:        true,
+              isActive:        true,
+            },
+          },
         },
       },
     },
@@ -49,188 +81,91 @@ export const getDashboardAnalytics = async () => {
   // =========================
   // SUCCESS PAYMENTS
   // =========================
-
-  const successfulPayments = payments.filter(
-    (payment) => payment.status === "SUCCESS"
-  );
+  const successfulPayments = payments.filter((p) => p.status === "SUCCESS");
 
   // =========================
   // REVENUE
   // =========================
-
-  const totalRevenue =
-    successfulPayments.reduce(
-      (acc, item) =>
-        acc + Number(item.amount),
-      0
-    );
-
-  // =========================
-  // MONTHLY REVENUE
-  // =========================
+  const totalRevenue = successfulPayments.reduce(
+    (acc, item) => acc + Number(item.amount), 0
+  );
 
   const currentMonth = new Date().getMonth();
+  const currentYear  = new Date().getFullYear();
 
-  const currentYear = new Date().getFullYear();
-
-  const monthlyRevenue =
-    successfulPayments
-      .filter((payment) => {
-        const date = new Date(
-          payment.createdAt
-        );
-
-        return (
-          date.getMonth() === currentMonth &&
-          date.getFullYear() === currentYear
-        );
-      })
-      .reduce(
-        (acc, item) =>
-          acc + Number(item.amount),
-        0
-      );
+  const monthlyRevenue = successfulPayments
+    .filter((p) => {
+      const d = new Date(p.createdAt);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    })
+    .reduce((acc, item) => acc + Number(item.amount), 0);
 
   // =========================
   // UNIVERSITY ANALYTICS
   // =========================
-
   const universityMap = {};
 
   successfulPayments.forEach((payment) => {
-    // ✅ FIXED UNIVERSITY FETCH
     const universityName =
       payment.university?.name ||
-      payment.school?.university?.name ||
+      payment.School?.university?.name ||
       "Unknown University";
 
     if (!universityMap[universityName]) {
-      universityMap[universityName] = {
-        universityName,
-        revenue: 0,
-        schools: new Set(),
-      };
+      universityMap[universityName] = { universityName, revenue: 0, schools: new Set() };
     }
 
-    universityMap[
-      universityName
-    ].revenue += Number(payment.amount);
+    universityMap[universityName].revenue += Number(payment.amount);
 
-    if (payment.school?.name) {
-      universityMap[
-        universityName
-      ].schools.add(
-        payment.school.name
-      );
+    if (payment.School?.name) {
+      universityMap[universityName].schools.add(payment.School.name);
     }
   });
 
-  const universityAnalytics =
-    Object.values(universityMap).map(
-      (item) => ({
-        universityName:
-          item.universityName,
-
-        revenue: item.revenue,
-
-        totalSchools:
-          item.schools.size,
-      })
-    );
+  const universityAnalytics = Object.values(universityMap).map((item) => ({
+    universityName: item.universityName,
+    revenue:        item.revenue,
+    totalSchools:   item.schools.size,
+  }));
 
   // =========================
   // PLAN ANALYTICS
   // =========================
-
   const planMap = {};
 
   successfulPayments.forEach((payment) => {
-    const subscriptions =
-      payment.Subscription || [];
+    const subs = payment.subscriptions || [];
 
-    // ✅ HANDLE NO SUBSCRIPTION
-    if (subscriptions.length === 0) {
-      if (!planMap["Basic Plan"]) {
-        planMap["Basic Plan"] = {
-          planName: "Basic Plan",
-          revenue: 0,
-          subscriptions: 0,
-        };
-      }
-
-      planMap["Basic Plan"].revenue +=
-        Number(payment.amount);
-
-      planMap["Basic Plan"]
-        .subscriptions += 1;
-
+    if (subs.length === 0) {
+      const planName = payment.planName || "Basic Plan";
+      if (!planMap[planName]) planMap[planName] = { planName, revenue: 0, subscriptions: 0 };
+      planMap[planName].revenue       += Number(payment.amount);
+      planMap[planName].subscriptions += 1;
       return;
     }
 
-    subscriptions.forEach((sub) => {
-      const planName =
-        sub.plan?.name || "Basic Plan";
-
-      if (!planMap[planName]) {
-        planMap[planName] = {
-          planName,
-          revenue: 0,
-          subscriptions: 0,
-        };
-      }
-
-      planMap[planName]
-        .revenue += Number(
-        payment.amount
-      );
-
-      planMap[
-        planName
-      ].subscriptions += 1;
+    subs.forEach((sub) => {
+      const planName = sub.plan?.name || payment.planName || "Basic Plan";
+      if (!planMap[planName]) planMap[planName] = { planName, revenue: 0, subscriptions: 0 };
+      planMap[planName].revenue       += Number(payment.amount);
+      planMap[planName].subscriptions += 1;
     });
   });
 
-  const planAnalytics =
-    Object.values(planMap);
+  const planAnalytics = Object.values(planMap);
 
   // =========================
-  // RECENT PAYMENTS
+  // RECENT PAYMENTS (last 10)
   // =========================
-
-  const recentPayments =
-    payments.slice(0, 10).map(
-      (payment) => ({
-        id: payment.id,
-
-        school:
-          payment.school?.name ||
-          payment.schoolName ||
-          "N/A",
-
-        // ✅ FIXED UNIVERSITY NAME
-        university:
-          payment.university?.name ||
-          payment.school?.university
-            ?.name ||
-          "Unknown University",
-
-        amount: payment.amount,
-
-        status: payment.status,
-
-        plan:
-          payment.Subscription?.[0]
-            ?.plan?.name ||
-          "Basic Plan",
-
-        createdAt:
-          payment.createdAt,
-      })
-    );
-
-  // =========================
-  // RETURN
-  // =========================
+  const recentPayments = payments.slice(0, 10).map((payment) => ({
+    id:         payment.id,
+    school:     payment.School?.name || payment.schoolName || "N/A",
+    university: payment.university?.name || payment.School?.university?.name || "Unknown University",
+    amount:     payment.amount,
+    status:     payment.status,
+    plan:       payment.subscriptions?.[0]?.plan?.name || payment.planName || "Basic Plan",
+    createdAt:  payment.createdAt,
+  }));
 
   return {
     summary: {
@@ -239,25 +174,12 @@ export const getDashboardAnalytics = async () => {
       totalSchools,
       totalUniversities,
       totalSubscriptions,
-
-      successfulPayments:
-        successfulPayments.length,
-
-      failedPayments:
-        payments.filter(
-          (p) => p.status === "FAILED"
-        ).length,
-
-      pendingPayments:
-        payments.filter(
-          (p) => p.status === "PENDING"
-        ).length,
+      successfulPayments: successfulPayments.length,
+      failedPayments:  payments.filter((p) => p.status === "FAILED").length,
+      pendingPayments: payments.filter((p) => p.status === "PENDING").length,
     },
-
     universityAnalytics,
-
     planAnalytics,
-
     recentPayments,
   };
 };

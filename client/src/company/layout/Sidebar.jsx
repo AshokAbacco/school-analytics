@@ -15,8 +15,9 @@ const Sidebar = ({ isOpen, onClose, isCollapsed }) => {
   const menus = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Universities", path: "/universities", icon: Users },
-{ name: "Access Control", path: "/access-control", icon: ShieldBan },
+    { name: "Access Control", path: "/access-control", icon: ShieldBan },
     { name: "Payments", path: "/payments", icon: CreditCard },
+    { name: "ID Cards", path: "/id-cards", icon: CreditCard }
   ];
 
   return (

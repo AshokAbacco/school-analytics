@@ -4,6 +4,9 @@ import DashboardPage from "../dashboard/DashboardPage";
 import UsersPage from "../users/UsersPage";
 import PaymentsPage from "../payments/PaymentsPage";
 import AccessControlPage from "../access-control/AccessControlPage";
+import IdCardOrdersPage from "../idcards/IdCardOrdersPage";
+import IdCardOrderDetailPage from "../idcards/IdCardOrderDetailPage";
+import PrintCardPage from "../idcards/PrintCardPage";
 
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -39,6 +42,11 @@ const CompanyRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route path="/id-cards" element={<ProtectedRoute><IdCardOrdersPage /></ProtectedRoute>} />
+      <Route path="/id-cards/:id" element={<ProtectedRoute><IdCardOrderDetailPage /></ProtectedRoute>} />
+        <Route path="/id-cards/:orderId/print/:studentId" element={<ProtectedRoute><PrintCardPage /></ProtectedRoute>} />
+
+
 
       {/* Payments */}
       <Route

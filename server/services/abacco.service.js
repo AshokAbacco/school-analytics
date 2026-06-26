@@ -1,3 +1,4 @@
+//server\services\abacco.service.js
 import prisma from "../config/prismaClient.js";
 
 export const createAbaccoAdmin = async ({ name, email, password }) => {
