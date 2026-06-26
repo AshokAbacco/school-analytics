@@ -24,6 +24,14 @@ const SchoolOverview = ({
       value: plan.subscriptions,
     })) || [];
 
+  if (chartData.length === 0) {
+    return (
+      <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex items-center justify-center h-[450px]">
+        <p className="text-gray-400 font-bold text-sm">No subscription data yet</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
       <div className="mb-6">
