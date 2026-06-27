@@ -1,6 +1,26 @@
 // server/controllers/idcard.controller.js
 import prisma from "../config/prismaClient.js";
 
+// ── Parse the JSON envelope stored in template.description ───────────────────
+// cardBlocks + elementLayout are stored there (no schema migration needed)
+const parseTemplateLayout = (t) => {
+  if (!t) return t;
+  try {
+    const parsed = t.description ? JSON.parse(t.description) : null;
+    if (parsed && parsed.__meta) {
+      return {
+        ...t,
+        description:   parsed.text          || null,
+        cardBlocks:    parsed.cardBlocks     || null,
+        elementLayout: parsed.elementLayout  || null,
+      };
+    }
+  } catch {}
+  return { ...t, cardBlocks: null, elementLayout: null };
+};
+
+
+
 // ── GET ALL ORDERS ─────────────────────────────────────────────────────────────
 // GET /api/id-cards/orders
 // Query params: ?status= ?schoolId= ?page=1 ?limit=20
@@ -35,6 +55,7 @@ export const getAllOrders = async (req, res) => {
             select: {
               id:           true,
               title:        true,
+              description:  true,   // ← JSON envelope holds cardBlocks + elementLayout
               templateType: true,
               templateKey:  true,
               primaryColor: true,
@@ -47,12 +68,18 @@ export const getAllOrders = async (req, res) => {
       prisma.idCardOrder.count({ where }),
     ]);
 
+    // Parse cardBlocks + elementLayout out of the description JSON envelope
+    const parsedOrders = orders.map((o) => ({
+      ...o,
+      template: parseTemplateLayout(o.template),
+    }));
+
     return res.json({
       success: true,
       total,
       page:       Number(page),
       totalPages: Math.ceil(total / Number(limit)),
-      orders,
+      orders:     parsedOrders,
     });
   } catch (err) {
     console.error("getAllOrders error:", err);
@@ -85,6 +112,7 @@ export const getOrderById = async (req, res) => {
           select: {
             id:           true,
             title:        true,
+            description:  true,   // ← JSON envelope holds cardBlocks + elementLayout
             templateType: true,
             templateKey:  true,
             primaryColor: true,
@@ -105,13 +133,36 @@ export const getOrderById = async (req, res) => {
     // Get class names from the order
     const classNames = classDetails.map((c) => c.className).filter(Boolean);
 
-    // Fetch all class sections for this school that match the class names
-    const classSections = await prisma.classSection.findMany({
-      where: {
-        schoolId: order.schoolId,
-        name:     { in: classNames },
-      },
+    // Fetch all class sections for this school — use flexible matching
+    // because the order stores short names like "1-A" but DB may have "Grade 1 - A" etc.
+    const allClassSections = await prisma.classSection.findMany({
+      where: { schoolId: order.schoolId },
       select: { id: true, name: true },
+    });
+
+    // Match: exact first, then case-insensitive contains in either direction
+    const classSections = allClassSections.filter((cs) =>
+      classNames.some((cn) => {
+        const a = cn.trim().toLowerCase();
+        const b = cs.name.trim().toLowerCase();
+        return (
+          a === b ||                          // exact
+          b.includes(a) ||                    // DB name contains order name
+          a.includes(b) ||                    // order name contains DB name
+          a.replace(/\s/g,"") === b.replace(/\s/g,"")  // ignore spaces
+        );
+      })
+    );
+
+    // Build reverse map: classSection.id → the order className it matched
+    const sectionToOrderClass = {};
+    classSections.forEach((cs) => {
+      const matched = classNames.find((cn) => {
+        const a = cn.trim().toLowerCase();
+        const b = cs.name.trim().toLowerCase();
+        return a === b || b.includes(a) || a.includes(b) || a.replace(/\s/g,"") === b.replace(/\s/g,"");
+      });
+      if (matched) sectionToOrderClass[cs.id] = matched;
     });
 
     const classSectionIds = classSections.map((cs) => cs.id);
@@ -174,7 +225,8 @@ export const getOrderById = async (req, res) => {
         id:            e.student.id,
         name:          `${e.student.personalInfo?.firstName || ""} ${e.student.personalInfo?.lastName || ""}`.trim(),
         admissionNo:   e.admissionNumber,
-        class:         e.classSection.name,
+        // Use the order className (e.g. "1-A") so frontend filter s.class === selectedClass works
+        class:         sectionToOrderClass[e.classSectionId] || e.classSection.name,
         grade:         e.classSection.grade,
         fatherName:    e.student.personalInfo?.parentName  || "—",
         contactNo:     e.student.personalInfo?.parentPhone || e.student.personalInfo?.phone || "—",
@@ -185,11 +237,22 @@ export const getOrderById = async (req, res) => {
       }));
     }
 
+    // Parse cardBlocks + elementLayout out of the description JSON envelope
+    const parsedOrder = { ...order, template: parseTemplateLayout(order.template) };
+
     return res.json({
       success: true,
-      order,
+      order:   parsedOrder,
       students,
       totalStudents: students.length,
+      // Debug info — helps diagnose class name mismatches
+      _debug: {
+        orderClassNames:   classNames,
+        dbClassSections:   allClassSections.map((cs) => ({ id: cs.id, name: cs.name })),
+        matchedSections:   classSections.map((cs) => cs.name),
+        classSectionIds,
+        enrollmentCount:   students.length,
+      },
     });
   } catch (err) {
     console.error("getOrderById error:", err);

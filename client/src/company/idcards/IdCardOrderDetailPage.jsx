@@ -25,6 +25,7 @@ export default function IdCardOrderDetailPage() {
 
   const [order, setOrder]       = useState(null);
   const [students, setStudents] = useState([]);
+  const [debug, setDebug]       = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
 
@@ -42,6 +43,7 @@ export default function IdCardOrderDetailPage() {
       if (!data.success) throw new Error(data.message || "Failed to load order");
       setOrder(data.order);
       setStudents(data.students || []);
+      setDebug(data._debug || null);
 
       // Auto-select first class
       const classes = data.order?.classDetails || [];
@@ -227,10 +229,33 @@ export default function IdCardOrderDetailPage() {
 
             {/* Students table */}
             {classStudents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <div className="flex flex-col items-center justify-center py-10 gap-3 px-6">
                 <User size={32} className="text-gray-200" />
                 <p className="text-sm font-bold text-gray-400">No students found for this class</p>
-                <p className="text-xs text-gray-400">Class name may not match exactly in the DB</p>
+                {debug && (
+                  <div className="w-full max-w-lg rounded-xl border border-orange-200 bg-orange-50 p-4 text-left">
+                    <p className="text-xs font-black text-orange-600 uppercase tracking-wide mb-2">Debug — Class Name Mismatch</p>
+                    <p className="text-xs text-orange-700 mb-1">
+                      <strong>Order class names:</strong> {debug.orderClassNames?.join(", ") || "none"}
+                    </p>
+                    <p className="text-xs text-orange-700 mb-1">
+                      <strong>Matched DB sections:</strong> {debug.matchedSections?.length ? debug.matchedSections.join(", ") : "NONE MATCHED"}
+                    </p>
+                    <p className="text-xs text-orange-700 mb-2">
+                      <strong>All DB class sections for this school:</strong>
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {(debug.dbClassSections || []).map((cs) => (
+                        <span key={cs.id} className="px-2 py-0.5 rounded-full bg-white border border-orange-200 text-[10px] font-bold text-orange-800">
+                          {cs.name}
+                        </span>
+                      ))}
+                      {!debug.dbClassSections?.length && (
+                        <span className="text-xs text-red-500 font-bold">No class sections found for this school in DB</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <>
